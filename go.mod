@@ -6,7 +6,7 @@ require (
 	entgo.io/ent v0.12.3
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.1.0
-	github.com/ogen-go/ogen v0.81.2
+	github.com/ogen-go/ogen v0.59.0
 	go.opentelemetry.io/otel v1.22.0
 	go.opentelemetry.io/otel/metric v1.22.0
 	go.opentelemetry.io/otel/trace v1.22.0

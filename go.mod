@@ -1,4 +1,4 @@
-module github.com/ogen-go/ent2ogen
+module github.com/jamesw201/ent2ogen
 
 go 1.18
 

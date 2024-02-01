@@ -1,0 +1,91 @@
+{{ define "ent2ogen_mappers" }}
+{{ template "header" $ }}
+
+{{- $cfg := $.Config.Annotations.Ent2ogen }}
+
+import openapi "{{ $cfg.OgenPackage }}"
+
+{{- range $_, $m := $cfg.Mappings }}
+
+{{ $m.Comment }}
+func {{ $m.From.Name }}SliceToOpenAPI(s []*{{ $m.From.Name }})  (_ []openapi.{{ $m.To.Name }}, err error) {
+    result := make([]openapi.{{ $m.To.Name }}, len(s))
+    for i, v := range s {
+        result[i], err = v.toOpenAPI()
+        if err != nil {
+            return nil, err
+        }
+    }
+
+    return result, nil
+}
+
+{{ $m.Comment }}
+func (e *{{ $m.From.Name }}) ToOpenAPI() (*openapi.{{ $m.To.Name }}, error) {
+    t, err := e.toOpenAPI()
+    if err != nil {
+        return nil, err
+    }
+
+    return &t, nil
+}
+
+func (e *{{ $m.From.Name }}) toOpenAPI() (t openapi.{{ $m.To.Name }}, err error) {
+    {{- range $f := $m.FieldMappings }}
+        {{- $entField  := $f.From }}
+        {{- $ogenField := $f.To }}
+
+        {{- if $entField.Nillable }}
+        if e.{{ $entField.StructField }} != nil {
+            {{ assign $ogenField $entField }}
+        } else {
+            {{ unassign $ogenField }}
+        }
+        {{- else }}
+            {{ assign $ogenField $entField }}
+        {{- end }}
+    {{- end }}
+
+    {{- range $e := $m.EdgeMappings }}
+    // Edge '{{ $e.From.Name }}'.
+    if err := func() error {
+        {{- $edge  := $e.From }}
+        {{- $field := $e.To }}
+        v, err := e.Edges.{{ $edge.StructField }}OrErr()
+        if err != nil {
+            {{- if $edge.Optional }}
+            if IsNotFound(err) {
+                return nil
+            }
+            {{- end }}
+            return fmt.Errorf("load: %w", err)
+        }
+
+        {{- if $edge.Unique }}
+        openapiType, err := v.toOpenAPI()
+        {{- else }}
+        openapiType, err := {{ $edge.Type.Name }}SliceToOpenAPI(v)
+        {{- end }}
+        if err != nil {
+            return fmt.Errorf("convert to openapi: %w", err)
+        }
+
+        {{- if $edge.Optional }}
+            {{- if $edge.Unique }}
+            t.{{ $field.Name }}.SetTo(openapiType)
+            {{- else }}
+            t.{{ $field.Name }} = openapiType
+            {{- end }}
+        {{- else }}
+            t.{{ $field.Name }} = openapiType
+        {{- end }}
+        return nil
+    }(); err != nil {
+        return t, fmt.Errorf("edge '{{ $edge.Name }}': %w", err)
+    }
+    {{- end }}
+    return t, nil
+}
+
+{{ end }}
+{{- end }}
